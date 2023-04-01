@@ -17,6 +17,8 @@ def find_comments(source):
                  the comment pattern appears within a string literal.
     '''
     in_string = False
+    in_regexp_literal = False
+    end_of_regexp_literal = False
     in_s_comment = False
     in_m_comment = False
     follows_escape = False
@@ -33,6 +35,9 @@ def find_comments(source):
             follows_escape = not follows_escape
         else:
             follows_escape = False
+
+        # This is True for one char at most
+        end_of_regexp_literal = False
 
         if in_s_comment:
             if source[idx] == '\n':
@@ -59,15 +64,22 @@ def find_comments(source):
                 in_string = False
             elif source[idx] == '\n' and in_string != '`' and not follows_escape:
                 in_string = False
+        elif in_regexp_literal:
+            if source[idx] == '/' and not follows_escape:
+                if source[idx+1] not in 'ims':
+                    in_regexp_literal = False
+                    end_of_regexp_literal = True
 
         if in_m_comment or in_s_comment:
             comment += source[idx]
             continue
 
-        in_m_comment = source[idx] == '/' and source[idx + 1] == '*'
-        in_s_comment = source[idx] == '/' and source[idx + 1] == '/'
+        in_m_comment = source[idx] == '/' and source[idx + 1] == '*' and not end_of_regexp_literal
+        in_s_comment = source[idx] == '/' and source[idx + 1] == '/' and not end_of_regexp_literal
 
         if in_m_comment or in_s_comment:
             comment = ''
         elif source[idx] == '\'' or source[idx] == '"' or source[idx] == '`':
             in_string = source[idx]
+        elif source[idx] == '/' and not end_of_regexp_literal:
+            in_regexp_literal = True
